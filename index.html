@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🌌 Galaxy Quest: พิชิตจักรวาล</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#070b22;color:#fff;font-family:system-ui,"Noto Sans Thai",sans-serif;overflow:hidden}
+button{font:inherit;font-weight:800;border:0;cursor:pointer;color:#fff}
+#app{height:100vh;display:flex;align-items:center;justify-content:center}
+.screen{display:none;width:min(1100px,96vw);height:min(720px,94vh);position:relative}
+.screen.active{display:flex}
+.card{background:rgba(16,23,65,.92);border:4px solid #7c83ff;box-shadow:0 0 0 4px #171b50,0 0 35px #384cff66;border-radius:16px;padding:24px}
+#start{align-items:center;justify-content:center;text-align:center;background:radial-gradient(circle at 50% 35%,#243da0 0,#101546 40%,#070b22 75%);border-radius:18px;overflow:hidden}
+.stars{position:absolute;inset:0;background-image:radial-gradient(#fff 1px,transparent 1px);background-size:37px 37px;opacity:.35}
+.title{font-size:clamp(34px,6vw,68px);color:#7ee7ff;text-shadow:5px 5px #4728a8;margin:0 0 10px}
+.subtitle{font-size:20px;color:#d8dcff}.bigbtn{padding:14px 28px;border-radius:10px;background:#6c4cff;box-shadow:0 5px #39258f;margin:8px}.bigbtn:hover{transform:translateY(-2px)}
+.slime{width:100px;height:78px;border-radius:50% 50% 42% 42%;background:#31d7e8;border:5px solid #0c718b;position:relative;margin:30px auto 15px;box-shadow:inset 0 -10px #13a8c0}
+.slime:before,.slime:after{content:"";position:absolute;width:13px;height:18px;background:#14204c;border-radius:50%;top:28px}.slime:before{left:25px}.slime:after{right:25px}
+.crown{position:absolute;top:-30px;left:22px;font-size:48px}
+#map{flex-direction:column;padding:14px;background:linear-gradient(#10184b,#070b22);border-radius:18px}
+.maphead{display:flex;justify-content:space-between;align-items:center;gap:10px}.maphead h2{margin:5px;font-size:25px}.mapgrid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px;overflow:auto}
+.planet{position:relative;min-height:125px;border:3px solid #555fba;border-radius:14px;background:#141b50;padding:12px;text-align:left}.planet.unlocked{border-color:#65e8ff;background:#19245e}.planet.locked{opacity:.48;filter:grayscale(.7)}.planet h3{margin:5px 0}.orb{font-size:44px;float:right}.planet small{display:block;color:#bdc5ff}.planet .status{position:absolute;bottom:9px;left:12px;font-size:12px;color:#7ef4c9}
+#game{flex-direction:column;background:#0b1030;border-radius:18px;overflow:hidden}.hud{height:58px;display:flex;align-items:center;justify-content:space-around;background:#151c50;border-bottom:3px solid #5b66d8;font-size:15px;z-index:3}.hud button{background:#3943a3;border-radius:8px;padding:7px 10px}
+#canvas{width:100%;height:calc(100% - 58px);image-rendering:pixelated;background:#111;display:block}
+#question{align-items:center;justify-content:center;background:rgba(4,6,25,.96);z-index:5}.qbox{width:min(760px,94vw);max-height:92%;overflow:auto}.qbox h2{margin-top:0;color:#7ee7ff}.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choice{padding:14px;background:#222c70;border:3px solid #4b59bd;border-radius:10px;text-align:left}.choice:hover{background:#35449a}.choice.correct{background:#176d58;border-color:#62f2c5}.choice.wrong{background:#75384b;border-color:#ff718d}.explain{padding:12px;border-radius:10px;background:#10163e;margin-top:12px;color:#dce2ff}
+#info,#victory,#over{align-items:center;justify-content:center;text-align:center}.infoCard{max-width:720px}.planetFacts{font-size:18px;line-height:1.6;text-align:left}
+.hidden{display:none!important}.toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:#121a55;border:3px solid #7ee7ff;padding:10px 16px;border-radius:10px;z-index:10}
+@media(max-width:650px){.mapgrid{grid-template-columns:1fr 1fr}.choices{grid-template-columns:1fr}.hud{font-size:12px}.planet{min-height:110px}}
+</style>
+</head>
+<body>
+<div id="app">
+<section id="start" class="screen active"><div class="stars"></div><div style="position:relative;z-index:2">
+<div class="slime"><span class="crown">👑</span></div>
+<h1 class="title">🌌 Galaxy Quest</h1><div class="subtitle">พิชิตจักรวาล • 2D Pixel Adventure + Educational Game</div>
+<p>สำรวจดวงดาว เก็บชิ้นส่วนพลังงาน และตอบคำถามเพื่อปลดล็อกจักรวาล!</p>
+<button class="bigbtn" onclick="startGame()">🚀 เริ่มเกม</button><button class="bigbtn" onclick="resetProgress()">🔄 เริ่มใหม่</button>
+<p style="font-size:13px;color:#aab3ef">WASD / ลูกศร = เดิน • ชนศัตรู = เสีย HP • Enter = ตอบ/ยืนยัน</p>
+</div></section>
+
+<section id="map" class="screen"><div class="maphead"><h2>🗺️ แผนที่ระบบสุริยะ</h2><div>🏆 <span id="mapScore">0</span> <button onclick="showStart()">เมนู</button></div></div><div class="mapgrid" id="planetGrid"></div></section>
+
+<section id="game" class="screen"><div class="hud"><span>❤️ <b id="hp">5</b></span><span>⭐ <b id="score">0</b></span><span>🧩 <b id="parts">0/5</b></span><span>🌌 <b id="planetName">-</b></span><span>⏱️ <b id="timer">120</b></span><button onclick="toggleSound()">🔊</button><button onclick="showMap()">🗺️</button></div><canvas id="canvas"></canvas><div id="toast" class="toast hidden"></div></section>
+
+<section id="question" class="screen"><div class="card qbox"><h2 id="qtitle">คำถาม</h2><div id="qtext"></div><div class="choices" id="choices"></div><div id="explain" class="explain hidden"></div><button id="nextBtn" class="bigbtn hidden" onclick="nextAfterQuestion()">ต่อไป ▶</button></div></section>
+
+<section id="info" class="screen"><div class="card infoCard"><h1 id="infoTitle">🌍 ความรู้</h1><div class="planetFacts" id="infoText"></div><button class="bigbtn" onclick="continueAfterInfo()">ไปต่อ 🚀</button></div></section>
+
+<section id="victory" class="screen"><div class="card infoCard"><h1 class="title">🏆 COSMIC VICTORY!</h1><p id="victoryText"></p><button class="bigbtn" onclick="resetProgress()">🔄 เล่นใหม่</button></div></section>
+<section id="over" class="screen"><div class="card infoCard"><h1 style="font-size:50px;color:#ff7892">💥 GAME OVER</h1><p id="overText"></p><button class="bigbtn" onclick="startGame()">🚀 เริ่มใหม่</button><button class="bigbtn" onclick="showMap()">🗺️ แผนที่</button></div></section>
+</div>
+
+<script>
+"use strict";
+const planets=[
+{name:"ดวงอาทิตย์",emoji:"☀️",color:"#f5b642",facts:"ดาวฤกษ์ศูนย์กลางของระบบสุริยะ ประกอบด้วยไฮโดรเจนและฮีเลียมเป็นหลัก และเป็นแหล่งพลังงานสำคัญของโลก",
+qs:[
+["ดวงอาทิตย์เป็นวัตถุประเภทใด?","ดาวฤกษ์","ดาวเคราะห์","ดาวหาง","ดาวบริวาร",0,"ดวงอาทิตย์เป็นดาวฤกษ์ที่สร้างพลังงานจากปฏิกิริยานิวเคลียร์ฟิวชัน"],
+["ธาตุใดมีปริมาณมากในดวงอาทิตย์?","เหล็ก","ไฮโดรเจน","ออกซิเจน","ซิลิกอน",1,"ไฮโดรเจนเป็นองค์ประกอบหลักของดวงอาทิตย์"],
+["พลังงานของดวงอาทิตย์เกิดจากกระบวนการใด?","การเผาไหม้","ฟิวชันนิวเคลียร์","การระเหย","แรงเสียดทาน",1,"ฟิวชันรวมธาตุเบาและปล่อยพลังงานจำนวนมาก"],
+["ดวงอาทิตย์อยู่บริเวณใดของระบบสุริยะ?","ศูนย์กลาง","ขอบนอก","ระหว่างโลกกับดวงจันทร์","นอกระบบสุริยะ",0,"ดาวเคราะห์ต่าง ๆ โคจรรอบดวงอาทิตย์"],
+["แสงจากดวงอาทิตย์เดินทางมายังโลกประมาณกี่นาที?","8 นาที","80 นาที","1 ชั่วโมง","1 วัน",0,"แสงใช้เวลาประมาณ 8 นาที 20 วินาทีจากดวงอาทิตย์ถึงโลก"]]},
+{name:"ดาวพุธ",emoji:"☿️",color:"#9a8f82",facts:"ดาวเคราะห์ที่อยู่ใกล้ดวงอาทิตย์ที่สุด มีพื้นผิวเป็นหินและมีหลุมอุกกาบาตจำนวนมาก",
+qs:[
+["ดาวพุธอยู่ลำดับที่เท่าไรจากดวงอาทิตย์?","1","2","3","4",0,"ดาวพุธเป็นดาวเคราะห์ลำดับแรก"],
+["ดาวพุธมีดวงจันทร์กี่ดวง?","0","1","2","4",0,"ดาวพุธไม่มีดวงจันทร์บริวาร"],
+["ดาวพุธมีพื้นผิวคล้ายวัตถุใดมาก?","ดวงจันทร์","ดาวเสาร์","โลก","ดวงอาทิตย์",0,"พื้นผิวเต็มไปด้วยหลุมอุกกาบาตคล้ายดวงจันทร์"],
+["ดาวพุธใช้เวลาโคจรรอบดวงอาทิตย์ประมาณเท่าใด?","88 วัน","365 วัน","687 วัน","12 ปี",0,"หนึ่งปีบนดาวพุธยาวประมาณ 88 วันโลก"],
+["ดาวพุธเป็นดาวเคราะห์ชนิดใด?","แก๊สยักษ์","หิน","น้ำแข็งยักษ์","ดาวแคระ",1,"ดาวพุธเป็นดาวเคราะห์หิน"]]},
+{name:"ดาวศุกร์",emoji:"♀️",color:"#d7a85d",facts:"ดาวเคราะห์หินที่มีบรรยากาศหนาแน่นมากและร้อนที่สุดในบรรดาดาวเคราะห์ของระบบสุริยะ",
+qs:[
+["ดาวศุกร์มีอุณหภูมิพื้นผิวโดยประมาณเท่าใด?","15°C","100°C","465°C","-180°C",2,"อุณหภูมิพื้นผิวเฉลี่ยสูงราว 465°C"],
+["ดาวศุกร์มีบรรยากาศหลักเป็นแก๊สใด?","คาร์บอนไดออกไซด์","ออกซิเจน","ไฮโดรเจน","ไนโตรเจนล้วน",0,"คาร์บอนไดออกไซด์เป็นองค์ประกอบหลัก"],
+["ดาวศุกร์มีดวงจันทร์กี่ดวง?","0","1","2","10",0,"ดาวศุกร์ไม่มีดวงจันทร์"],
+["ดาวศุกร์มีขนาดใกล้เคียงกับดาวใด?","โลก","พฤหัสบดี","เนปจูน","พุธ",0,"โลกและดาวศุกร์มีขนาดและมวลใกล้เคียงกัน"],
+["ดาวศุกร์หมุนรอบตัวเองโดยทั่วไปเป็นอย่างไร?","หมุนย้อนทิศส่วนใหญ่","เร็วที่สุด","ไม่หมุน","เหมือนโลกเป๊ะ",0,"ดาวศุกร์หมุนสวนทิศกับดาวเคราะห์ส่วนใหญ่"]]},
+{name:"โลก",emoji:"🌍",color:"#45a7e8",facts:"ดาวเคราะห์หินที่มีน้ำในสถานะของเหลวจำนวนมาก และเป็นบ้านของสิ่งมีชีวิตที่รู้จัก",
+qs:[
+["โลกอยู่ลำดับที่เท่าไรจากดวงอาทิตย์?","1","2","3","4",2,"โลกเป็นดาวเคราะห์ลำดับที่สาม"],
+["ดวงจันทร์บริวารธรรมชาติของโลกมีกี่ดวง?","1","2","4","ไม่มี",0,"โลกมีดวงจันทร์ธรรมชาติ 1 ดวง"],
+["พื้นผิวโลกส่วนใหญ่ปกคลุมด้วยอะไร?","โลหะ","น้ำ","น้ำแข็ง","ทราย",1,"ประมาณ 71% ของพื้นผิวโลกปกคลุมด้วยน้ำ"],
+["ชั้นบรรยากาศโลกมีแก๊สใดมากที่สุด?","ออกซิเจน","ไนโตรเจน","คาร์บอนไดออกไซด์","ฮีเลียม",1,"ไนโตรเจนมีสัดส่วนมากที่สุดในบรรยากาศ"],
+["โลกใช้เวลาโคจรรอบดวงอาทิตย์ประมาณเท่าใด?","24 ชั่วโมง","88 วัน","365.25 วัน","12 ปี",2,"หนึ่งรอบใช้เวลาประมาณ 365.25 วัน"]]},
+{name:"ดาวอังคาร",emoji:"♂️",color:"#c85b45",facts:"ดาวเคราะห์สีแดง มีภูเขาไฟและหุบเขาขนาดใหญ่ และมีหลักฐานว่าครั้งหนึ่งเคยมีน้ำบนพื้นผิว",
+qs:[
+["เหตุใดดาวอังคารจึงดูเป็นสีแดง?","ฝุ่นเกลือ","เหล็กออกไซด์","น้ำแข็ง","กำมะถันล้วน",1,"เหล็กในดินเกิดออกซิเดชันเป็นเหล็กออกไซด์ ทำให้มีสีแดง"],
+["ดาวอังคารมีดวงจันทร์กี่ดวง?","0","1","2","4",2,"ดาวอังคารมีโฟบอสและดีมอส"],
+["ภูเขาไฟที่ใหญ่ที่สุดในระบบสุริยะชื่ออะไร?","เอเวอเรสต์","โอลิมปัสมอนส์","เมานาเคอา","วีสุเวียส",1,"Olympus Mons อยู่บนดาวอังคาร"],
+["ดาวอังคารเป็นดาวเคราะห์ประเภทใด?","หิน","แก๊สยักษ์","น้ำแข็งยักษ์","ดาวฤกษ์",0,"ดาวอังคารเป็นดาวเคราะห์หิน"],
+["หนึ่งวันบนดาวอังคารยาวใกล้เคียงกับอะไร?","โลก","พุธ","ศุกร์","พฤหัสบดี",0,"หนึ่งวันบนดาวอังคารประมาณ 24 ชั่วโมง 39 นาที"]]},
+{name:"ดาวพฤหัสบดี",emoji:"♃",color:"#d7a76a",facts:"ดาวเคราะห์ที่ใหญ่ที่สุดในระบบสุริยะ เป็นแก๊สยักษ์และมีพายุขนาดใหญ่ เช่น จุดแดงใหญ่",
+qs:[
+["ดาวพฤหัสบดีเป็นดาวเคราะห์ที่มีขนาดอย่างไร?","เล็กที่สุด","ใหญ่ที่สุด","เท่ากับโลก","เล็กกว่าดาวอังคาร",1,"ดาวพฤหัสบดีใหญ่ที่สุดในระบบสุริยะ"],
+["ดาวพฤหัสบดีเป็นดาวเคราะห์ประเภทใด?","หิน","แก๊สยักษ์","น้ำแข็งยักษ์","ดาวแคระ",1,"จัดเป็นแก๊สยักษ์"],
+["จุดแดงใหญ่คืออะไร?","ภูเขา","พายุขนาดใหญ่","มหาสมุทร","ภูเขาไฟ",1,"เป็นพายุหมุนขนาดมหึมา"],
+["ดวงจันทร์ใดเป็นหนึ่งในดวงจันทร์ใหญ่ของพฤหัสบดี?","ไอโอ","ไททัน","ไทรทัน","คารอน",0,"ไอโอเป็นหนึ่งในดวงจันทร์กาลิเลียน"],
+["ดาวพฤหัสบดีมีวงแหวนหรือไม่?","ไม่มีเลย","มี","มีเฉพาะวงเดียว","มีเฉพาะน้ำแข็งบนพื้น",1,"ดาวพฤหัสบดีมีระบบวงแหวนจาง ๆ"]]},
+{name:"ดาวเสาร์",emoji:"♄",color:"#e4c57a",facts:"แก๊สยักษ์ที่โดดเด่นด้วยระบบวงแหวนกว้างและสว่าง ประกอบด้วยอนุภาคน้ำแข็งและหินจำนวนมาก",
+qs:[
+["สิ่งใดเป็นลักษณะเด่นของดาวเสาร์?","มหาสมุทร","วงแหวน","ภูเขาไฟ","ป่า",1,"ดาวเสาร์มีระบบวงแหวนที่โดดเด่นมาก"],
+["ดาวเสาร์เป็นดาวเคราะห์ประเภทใด?","หิน","แก๊สยักษ์","น้ำแข็งยักษ์","ดาวแคระ",1,"ดาวเสาร์เป็นแก๊สยักษ์"],
+["วงแหวนดาวเสาร์ประกอบด้วยอะไรเป็นหลัก?","น้ำและน้ำแข็ง","น้ำแข็ง หิน และฝุ่น","เหล็กล้วน","ลาวา",1,"วงแหวนมีอนุภาคน้ำแข็งและวัสดุหิน/ฝุ่น"],
+["ดวงจันทร์ขนาดใหญ่ของดาวเสาร์ชื่ออะไร?","ไททัน","ยูโรปา","ไอโอ","ฟีบี",0,"ไททันเป็นดวงจันทร์ขนาดใหญ่ของดาวเสาร์"],
+["ความหนาแน่นเฉลี่ยของดาวเสาร์เมื่อเทียบกับน้ำเป็นอย่างไร?","น้อยกว่าน้ำ","มากกว่าน้ำมาก","เท่ากัน","ไม่มีความหนาแน่น",0,"ความหนาแน่นเฉลี่ยของดาวเสาร์ต่ำกว่าน้ำ"]]},
+{name:"ดาวยูเรนัส",emoji:"♅",color:"#7bd9df",facts:"น้ำแข็งยักษ์สีฟ้าเขียว มีแก๊สมีเทนในบรรยากาศ และมีแกนหมุนเอียงมากจนดูเหมือนหมุนตะแคง",
+qs:[
+["ดาวยูเรนัสมีสีฟ้าเขียวส่วนหนึ่งเพราะแก๊สใด?","มีเทน","ออกซิเจน","เหล็ก","ฮีเลียม",0,"มีเทนดูดกลืนแสงสีแดงและทำให้มีสีฟ้าเขียว"],
+["ดาวยูเรนัสจัดเป็นอะไร?","หิน","แก๊สยักษ์","น้ำแข็งยักษ์","ดาวฤกษ์",2,"ยูเรนัสเป็นหนึ่งในน้ำแข็งยักษ์"],
+["ลักษณะการเอียงแกนหมุนของยูเรนัสเป็นอย่างไร?","เอียงมาก","ไม่เอียงเลย","ตั้งฉากเป๊ะ","เปลี่ยนทุกชั่วโมง",0,"แกนหมุนเอียงประมาณ 98 องศา"],
+["ดาวยูเรนัสมีวงแหวนหรือไม่?","มี","ไม่มี","มีเฉพาะวงแหวนโลก","ไม่ทราบ",0,"ยูเรนัสมีวงแหวนจาง ๆ หลายวง"],
+["ดาวยูเรนัสโคจรรอบดวงอาทิตย์ใช้เวลาประมาณกี่ปีโลก?","1","12","84","165",2,"ใช้เวลาประมาณ 84 ปีโลก"]]},
+{name:"ดาวเนปจูน",emoji:"♆",color:"#4169e1",facts:"ดาวเคราะห์ชั้นนอกสุดใน 8 ดาวเคราะห์ มีสีฟ้าเข้มและมีลมแรงมากในชั้นบรรยากาศ",
+qs:[
+["ดาวเนปจูนเป็นดาวเคราะห์ลำดับที่เท่าใดจากดวงอาทิตย์?","6","7","8","9",2,"เนปจูนเป็นดาวเคราะห์ลำดับที่ 8"],
+["ดาวเนปจูนจัดเป็นอะไร?","หิน","แก๊สยักษ์","น้ำแข็งยักษ์","ดาวฤกษ์",2,"เนปจูนเป็นน้ำแข็งยักษ์"],
+["ดาวเนปจูนมีลมแรงหรือไม่?","ไม่มีลม","มีลมแรงมาก","มีเฉพาะพายุฝุ่น","ลมเท่ากับโลก",1,"เนปจูนมีลมที่เร็วมากในระบบสุริยะ"],
+["ดวงจันทร์สำคัญของเนปจูนชื่ออะไร?","ไททัน","ไทรทัน","ยูโรปา","คารอน",1,"ไทรทันเป็นดวงจันทร์ขนาดใหญ่ของเนปจูน"],
+["เนปจูนใช้เวลาโคจรรอบดวงอาทิตย์ประมาณเท่าใด?","12 ปี","84 ปี","165 ปี","365 วัน",2,"หนึ่งรอบใช้เวลาประมาณ 165 ปีโลก"]]}
+];
+
+const cosmic=[
+["ดาวเคราะห์ใดใหญ่ที่สุด?","พฤหัสบดี","โลก","อังคาร","พุธ",0],
+["ดาวเคราะห์ใดมีวงแหวนเด่นที่สุด?","เสาร์","โลก","ศุกร์","พุธ",0],
+["ดาวเคราะห์สีแดงคือดวงใด?","อังคาร","ยูเรนัส","เนปจูน","ศุกร์",0],
+["ดาวเคราะห์ลำดับที่ 3 จากดวงอาทิตย์คือ?","โลก","พุธ","ศุกร์","อังคาร",0],
+["ดาวเคราะห์ใดไม่มีดวงจันทร์?","พุธ","โลก","อังคาร","เสาร์",0],
+["ดาวเคราะห์ใดเป็นน้ำแข็งยักษ์?","ยูเรนัส","โลก","พุธ","ศุกร์",0],
+["ดาวเคราะห์ที่ไกลดวงอาทิตย์ที่สุดใน 8 ดาวเคราะห์คือ?","เนปจูน","เสาร์","ยูเรนัส","พฤหัสบดี",0],
+["ดวงอาทิตย์เป็นอะไร?","ดาวฤกษ์","ดาวเคราะห์","ดาวหาง","อุกกาบาต",0],
+["ดาวศุกร์ร้อนมากเพราะบรรยากาศหนาแน่นและเรือนกระจกเด่น โดยแก๊สหลักคือ?","CO₂","O₂","He","H₂",0],
+["หนึ่งปีบนโลกเกิดจากอะไร?","โลกโคจรรอบดวงอาทิตย์","โลกหมุนรอบตัวเอง","ดวงจันทร์โคจรรอบโลก","ดวงอาทิตย์หมุนรอบโลก",0]
+];
+
+const S={hp:5,score:0,planet:0,parts:0,time:120,save:null,sound:true,qPool:[],qIndex:0,questionMode:"planet",cosmicIndex:0,cosmicCorrect:0,keys:{},lastHit:0,gameOver:false};
+const canvas=document.getElementById("canvas"),ctx=canvas.getContext("2d");
+let W=900,H=600,player,parts=[],enemies=[],rocks=[],healthStar=null,last=0,timerAcc=0,audioCtx=null,musicTimer=null,musicStep=0,musicGain=null;
+
+function show(id){document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");if(id!=="over"&&id!=="victory"&&S.sound)startMusic()}
+function showStart(){show("start")}
+function startGame(){S.hp=5;S.score=0;S.planet=0;S.parts=0;S.time=120;S.gameOver=false;showMap();renderMap();save();startMusic()}
+function resetProgress(){localStorage.removeItem("galaxyQuestSave");startGame()}
+function save(){localStorage.setItem("galaxyQuestSave",JSON.stringify({score:S.score,planet:S.planet}));}
+function load(){try{let x=JSON.parse(localStorage.getItem("galaxyQuestSave"));if(x){S.score=x.score||0;S.planet=x.planet||0}}catch(e){}}
+function renderMap(){let g=document.getElementById("planetGrid");g.innerHTML="";document.getElementById("mapScore").textContent=S.score;
+planets.forEach((p,i)=>{let d=document.createElement("div");let unlocked=i<=S.planet;d.className="planet "+(unlocked?"unlocked":"locked");d.innerHTML=`<span class="orb">${p.emoji}</span><h3>${i+1}. ${p.name}</h3><small>${p.facts.slice(0,75)}...</small><div class="status">${unlocked?(i<S.planet?"✅ ผ่านแล้ว":"🚀 สำรวจได้"):"🔒 ล็อก"}</div>`;if(unlocked)d.onclick=()=>beginPlanet(i);g.appendChild(d)})}
+function showMap(){if(S.gameOver)return;show("map");renderMap();save()}
+function beginPlanet(i){S.planet=i;S.parts=0;S.hp=5;S.time=120;S.qPool=shuffle([...planets[i].qs]);S.qIndex=0;S.questionMode="planet";setupWorld();show("game");requestAnimationFrame(loop);sound("open")}
+function setupWorld(){canvas.width=W;canvas.height=H;player={x:W/2,y:H/2,r:18,speed:3.2,inv:0};parts=[];enemies=[];rocks=[];
+// สร้างสิ่งกีดขวางก่อน เพื่อให้ชิ้นส่วนและศัตรูถูกสุ่มเฉพาะพื้นที่ว่าง
+for(let i=0;i<16;i++){let p=randomSafe(true);rocks.push({x:p.x,y:p.y,w:25+Math.random()*35,h:20+Math.random()*30})}
+for(let i=0;i<5;i++){let p=randomSafe();parts.push({x:p.x,y:p.y,got:false,pulse:Math.random()*6.28})}
+let hpPos=randomSafe();healthStar={x:hpPos.x,y:hpPos.y,got:false,pulse:Math.random()*6.28};
+for(let i=0;i<5;i++){let p=randomSafe();enemies.push({x:p.x,y:p.y,r:17,vx:(Math.random()<.5?-1:1)*(1+Math.random()),vy:(Math.random()<.5?-1:1)*(1+Math.random())})}
+document.getElementById("planetName").textContent=planets[S.planet].name;updateHUD();last=performance.now();timerAcc=0}
+function randomSafe(checkRocks=false){let p,tries=0;do{p={x:60+Math.random()*(W-120),y:95+Math.random()*(H-155)};tries++;if(tries>300)break}while(Math.hypot(p.x-W/2,p.y-H/2)<90 || (checkRocks && typeof rocks!=='undefined' && rocks.some(r=>p.x>r.x-28&&p.x<r.x+r.w+28&&p.y>r.y-28&&p.y<r.y+r.h+28)));return p}
+function loop(t){if(!document.getElementById("game").classList.contains("active")||S.gameOver)return;let dt=Math.min(32,t-last);last=t;update(dt);draw(t);requestAnimationFrame(loop)}
+function update(dt){let k=S.keys;let dx=(k.d||k.ArrowRight?1:0)-(k.a||k.ArrowLeft?1:0),dy=(k.s||k.ArrowDown?1:0)-(k.w||k.ArrowUp?1:0);if(dx&&dy){dx*=.707;dy*=.707}
+let nx=player.x+dx*player.speed,ny=player.y+dy*player.speed;
+if(nx>25&&nx<W-25&&!blocked(nx,player.y))player.x=nx;if(ny>75&&ny<H-25&&!blocked(player.x,ny))player.y=ny;
+player.inv=Math.max(0,player.inv-dt);
+enemies.forEach(e=>{e.x+=e.vx;e.y+=e.vy;if(e.x<25||e.x>W-25)e.vx*=-1;if(e.y<75||e.y>H-25)e.vy*=-1;if(Math.hypot(e.x-player.x,e.y-player.y)<e.r+player.r&&player.inv<=0){S.hp--;player.inv=1000;S.score=Math.max(0,S.score-25);sound("wrong");toast("💥 โดนศัตรู! -1 HP • -25 คะแนน");if(S.hp<=0)gameOver()}});
+parts.forEach((p,i)=>{p.pulse+=.08;if(!p.got&&Math.hypot(p.x-player.x,p.y-player.y)<34){S.parts++;updateHUD();sound("collect");toast("⭐ พบชิ้นส่วนพลังงาน! ตอบคำถามเพื่อเก็บมัน");p.got=true;askPlanetQuestion(i)}});
+if(healthStar){healthStar.pulse+=.08;if(!healthStar.got&&Math.hypot(healthStar.x-player.x,healthStar.y-player.y)<34){healthStar.got=true;sound("collect");toast("❤️ พบดาวพลังชีวิต! ตอบคำถามเพื่อรับเลือด +1");askHealthQuestion()}}
+timerAcc+=dt;if(timerAcc>1000){timerAcc-=1000;S.time--;updateHUD();if(S.time<=0)gameOver()}}
+function blocked(x,y){return rocks.some(r=>x>r.x-r.w/2-18&&x<r.x+r.w/2+18&&y>r.y-r.h/2-18&&y<r.y+r.h/2+18)}
+function draw(t){ctx.clearRect(0,0,W,H);let p=planets[S.planet];ctx.fillStyle="#10183d";ctx.fillRect(0,0,W,H);
+ctx.fillStyle="#fff";for(let i=0;i<70;i++){let x=(i*137)%W,y=75+(i*83)%525;ctx.fillRect(x,y,2,2)}
+ctx.fillStyle=p.color+"55";ctx.beginPath();ctx.arc(W-95,135,75,0,Math.PI*2);ctx.fill();ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(W-95,135,52,0,Math.PI*2);ctx.fill();
+ctx.fillStyle="#29335f";rocks.forEach(r=>{ctx.fillRect(r.x-r.w/2,r.y-r.h/2,r.w,r.h);ctx.fillStyle="#414b78";ctx.fillRect(r.x-r.w/2+5,r.y-r.h/2+4,r.w*.35,r.h*.3);ctx.fillStyle="#29335f"});
+parts.forEach(q=>{if(!q.got){let s=5+Math.sin(q.pulse)*2;ctx.fillStyle="#ffd83d";ctx.shadowColor="#fff27a";ctx.shadowBlur=12;drawStar(ctx,q.x,q.y,s+4);ctx.shadowBlur=0}});
+if(healthStar&&!healthStar.got){let s=7+Math.sin(healthStar.pulse)*2;ctx.fillStyle="#ff334d";ctx.shadowColor="#ff6677";ctx.shadowBlur=16;drawStar(ctx,healthStar.x,healthStar.y,s+5);ctx.shadowBlur=0}
+enemies.forEach(e=>{ctx.fillStyle="#ff6688";ctx.fillRect(e.x-16,e.y-12,32,24);ctx.fillStyle="#22254e";ctx.fillRect(e.x-10,e.y-5,6,7);ctx.fillRect(e.x+4,e.y-5,6,7);ctx.fillStyle="#ff9a55";ctx.fillRect(e.x-12,e.y+10,8,5);ctx.fillRect(e.x+4,e.y+10,8,5)});
+if(Math.floor(t/150)%2===0||player.inv<=0){drawSlime(player.x,player.y)}
+ctx.fillStyle="#fff";ctx.font="bold 15px system-ui";ctx.fillText("🧩 เก็บ ⭐ พลังงาน 5 ชิ้น แล้วตอบคำถาม",18,92)}
+function drawStar(c,x,y,r){c.beginPath();for(let i=0;i<10;i++){let a=-Math.PI/2+i*Math.PI/5,rr=i%2===0?r:r*.45,px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(i===0)c.moveTo(px,py);else c.lineTo(px,py)}c.closePath();c.fillStyle="#ffd83d";c.fill();c.strokeStyle="#fff3a1";c.lineWidth=2;c.stroke()}
+function drawSlime(x,y){ctx.save();ctx.translate(x,y);ctx.fillStyle="#20d8e8";ctx.beginPath();ctx.ellipse(0,5,20,17,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#0b718b";ctx.lineWidth=4;ctx.stroke();ctx.fillStyle="#15204b";ctx.fillRect(-10,0,5,7);ctx.fillRect(5,0,5,7);ctx.font="20px serif";ctx.fillText("👑",-16,-13);ctx.restore()}
+function updateHUD(){document.getElementById("hp").textContent=S.hp;document.getElementById("score").textContent=S.score;document.getElementById("parts").textContent=S.parts+"/5";document.getElementById("timer").textContent=S.time}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function askPlanetQuestion(partIndex){showQuestion(S.qPool[S.qIndex%S.qPool.length],"planet",partIndex)}
+function askHealthQuestion(){showQuestion(S.qPool[S.qIndex%S.qPool.length],"health",0)}
+function askCosmic(){if(S.cosmicIndex>=10){finishCosmic();return}showQuestion(cosmic[S.cosmicIndex],"cosmic",S.cosmicIndex)}
+function showQuestion(q,mode,index){S.questionMode=mode;S.currentIndex=index;document.getElementById("qtitle").textContent=mode==="planet"?`🧩 ภารกิจ ${planets[S.planet].name}`:mode==="health"?`❤️ ดาวพลังชีวิต • ${planets[S.planet].name}`:`👾 Cosmic Guardian • ข้อ ${S.cosmicIndex+1}/10`;document.getElementById("qtext").innerHTML=`<h3>${q[0]}</h3>`;let c=document.getElementById("choices");c.innerHTML="";document.getElementById("explain").classList.add("hidden");document.getElementById("nextBtn").classList.add("hidden");
+q.slice(1,5).forEach((ans,i)=>{let b=document.createElement("button");b.className="choice";b.textContent=`${String.fromCharCode(65+i)}. ${ans}`;b.onclick=()=>answer(i,q,b);c.appendChild(b)});show("question")}
+function answer(i,q,btn){document.querySelectorAll(".choice").forEach(x=>x.disabled=true);let ok=i===q[5];btn.classList.add(ok?"correct":"wrong");if(ok){S.score+=50;S.hp=Math.min(S.maxHp||5,S.hp+1);if(S.questionMode==="cosmic")S.cosmicCorrect++;sound("correct")}else{if(S.questionMode==="planet"){S.hp--;sound("wrong");}else sound("wrong");}
+updateHUD();document.getElementById("explain").innerHTML=(ok?"✅ ถูกต้อง! ":"❌ ยังไม่ถูก ")+"<b>ความรู้:</b> "+q[6];document.getElementById("explain").classList.remove("hidden");document.getElementById("nextBtn").classList.remove("hidden");if(S.questionMode==="planet"&&S.hp<=0){S.pendingOver=true}}
+function nextAfterQuestion(){if(S.questionMode==="health"){S.qIndex++;show("game");requestAnimationFrame(loop);return}if(S.questionMode==="planet"){S.qIndex++;if(S.pendingOver){S.pendingOver=false;gameOver();return}if(S.parts>=5){showInfo();}else{show("game");requestAnimationFrame(loop)}}else{S.cosmicIndex++;if(S.cosmicIndex>=10)finishCosmic();else askCosmic()}}
+function showInfo(){document.getElementById("infoTitle").textContent="🌌 "+planets[S.planet].name+" สำเร็จ!";document.getElementById("infoText").innerHTML=`<p>${planets[S.planet].facts}</p><p>⭐ คะแนนสะสม: <b>${S.score}</b></p><p>🧩 เก็บชิ้นส่วนครบ 5/5 แล้ว ดาวดวงถัดไปถูกปลดล็อก!</p>`;show("info")}
+function continueAfterInfo(){if(S.planet===planets.length-1){S.cosmicIndex=0;S.cosmicCorrect=0;askCosmic();return}S.planet++;save();renderMap();show("map")}
+function finishCosmic(){stopMusic();let win=S.cosmicCorrect>=7;show(win?"victory":"over");if(win){S.score+=200;document.getElementById("victoryText").innerHTML=`คุณตอบถูก <b>${S.cosmicCorrect}/10</b> ข้อ และพิชิต Cosmic Guardian ได้สำเร็จ!<br>คะแนนรวม: <b>${S.score}</b> 🏆`;save();sound("win")}else{document.getElementById("overText").innerHTML=`Cosmic Guardian ยังไม่พ่ายแพ้ คุณตอบถูก ${S.cosmicCorrect}/10 ข้อ ต้องได้อย่างน้อย 7 ข้อ<br><button class="bigbtn" onclick="S.cosmicIndex=0;S.cosmicCorrect=0;askCosmic()">⚔️ สู้ใหม่</button>`}}
+function gameOver(){stopMusic();S.gameOver=true;document.getElementById("overText").textContent=`พลังงานหมดหรือหมดเวลา • คะแนน ${S.score}`;show("over");sound("over")}
+function toast(t){let x=document.getElementById("toast");x.textContent=t;x.classList.remove("hidden");clearTimeout(window.tt);window.tt=setTimeout(()=>x.classList.add("hidden"),1600)}
+function toggleSound(){S.sound=!S.sound;document.querySelectorAll(".hud button")[0].textContent=S.sound?"🔊":"🔇";if(S.sound)startMusic();else stopMusic()}
+function startMusic(){if(!S.sound||musicTimer)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==="suspended")audioCtx.resume();musicGain=audioCtx.createGain();musicGain.gain.value=.035;musicGain.connect(audioCtx.destination);musicStep=0;const melody=[523.25,659.25,783.99,659.25,587.33,659.25,880,783.99,659.25,587.33,523.25,440,523.25,659.25,783.99,1046.5];const bass=[130.81,130.81,146.83,146.83,164.81,164.81,146.83,130.81];musicTimer=setInterval(()=>{if(!S.sound||!audioCtx||!musicGain)return;const now=audioCtx.currentTime;const n=melody[musicStep%melody.length];const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="triangle";o.frequency.value=n;g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.8,now+.025);g.gain.exponentialRampToValueAtTime(.0001,now+.22);o.connect(g);g.connect(musicGain);o.start(now);o.stop(now+.24);if(musicStep%2===0){const b=audioCtx.createOscillator(),bg=audioCtx.createGain();b.type="sine";b.frequency.value=bass[(musicStep/2)%bass.length|0];bg.gain.setValueAtTime(.0001,now);bg.gain.exponentialRampToValueAtTime(.45,now+.02);bg.gain.exponentialRampToValueAtTime(.0001,now+.35);b.connect(bg);bg.connect(musicGain);b.start(now);b.stop(now+.37)}musicStep++},260)}catch(e){}}
+function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null}if(musicGain&&audioCtx){try{musicGain.gain.setTargetAtTime(.0001,audioCtx.currentTime,.03)}catch(e){}}}
+function sound(type){if(!S.sound)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);let f={correct:660,wrong:180,collect:880,open:440,win:990,over:110}[type]||300;o.frequency.value=f;o.type=type==="wrong"||type==="over"?"sawtooth":"square";g.gain.setValueAtTime(.06,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.16);o.start();o.stop(audioCtx.currentTime+.16)}catch(e){}}
+window.addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();S.keys[e.key]=true;if(e.key==="Enter"&&document.getElementById("question").classList.contains("active")){let n=document.querySelector(".choice:not(:disabled)");if(n)n.click()}});
+window.addEventListener("keyup",e=>S.keys[e.key]=false);
+load();renderMap();
+</script>
+</body>
+</html>
